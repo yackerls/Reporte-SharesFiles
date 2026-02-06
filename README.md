@@ -53,7 +53,10 @@ foreach ($share in $shares) {
 # Exportar a CSV para la web
 $results | Export-Csv -Path $outputPath -NoTypeInformation -Encoding UTF8
 Write-Host "Reporte generado en: $outputPath" -ForegroundColor Green
-🐋 Paso 2: Despliegue en Docker (Linux)
+
+---
+
+## 🐳 Paso 2: Despliegue en Docker
 Clonar el repositorio:
 
 Bash
