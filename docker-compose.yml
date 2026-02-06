@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  reporte-shares:
+    build: .
+    container_name: reporte_shares_files
+    ports:
+      - "8050:8501"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
