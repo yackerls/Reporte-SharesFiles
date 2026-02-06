@@ -2,12 +2,12 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(page_title="Auditoría NTFS - Limpieza de Sistema", layout="wide")
+st.set_page_config(page_title="Reporte-SharesFiles", layout="wide")
 
 st.title("📂 Auditoría de Carpetas Compartidas")
 st.markdown("---")
 
-# Lista de exclusión definitiva para limpiar el reporte
+# Lista negra de identidades de sistema
 SISTEMA_EXCLUDE = [
     'NT AUTHORITY\\SYSTEM',
     'BUILTIN\\Administrators',
@@ -20,37 +20,51 @@ SISTEMA_EXCLUDE = [
 uploaded_file = st.file_uploader("Subir archivo permisos_shares.csv", type=["csv"])
 
 if uploaded_file is not None:
+    # Cargar datos
     df = pd.read_csv(uploaded_file)
     
-    # Limpieza de datos (quitar espacios y filtrar)
+    # Limpieza inicial: Quitar espacios y filtrar usuarios de sistema
     df['Identity'] = df['Identity'].str.strip()
     df_clean = df[~df['Identity'].isin(SISTEMA_EXCLUDE)].copy()
 
-    # Dashboard de métricas con datos reales
+    # --- SECCIÓN DE FILTROS (Igual a la versión anterior) ---
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        # Filtro multiselect por nombre de carpeta (ShareName)
+        share_filter = st.multiselect("Filtrar por Share:", options=sorted(df_clean['ShareName'].unique().tolist()))
+    with col_f2:
+        # Buscador por texto (Usuario o Carpeta)
+        search_query = st.text_input("Buscar Usuario o Carpeta específica:")
+
+    # Aplicar la lógica de los filtros sobre los datos ya limpios
+    if share_filter:
+        df_clean = df_clean[df_clean['ShareName'].isin(share_filter)]
+    
+    if search_query:
+        # Busca en todas las columnas para no limitar la experiencia
+        mask = df_clean.apply(lambda row: row.astype(str).str.contains(search_query, case=False).any(), axis=1)
+        df_clean = df_clean[mask]
+
+    # --- VISUALIZACIÓN ---
+    st.subheader("Resultados de Auditoría")
+    
+    # Métricas rápidas
     c1, c2, c3 = st.columns(3)
-    c1.metric("Total de Shares", df_clean['ShareName'].nunique())
-    c2.metric("Usuarios/Grupos Reales", df_clean['Identity'].nunique())
-    c3.metric("Entradas Filtradas", len(df_clean))
+    c1.metric("Shares encontrados", df_clean['ShareName'].nunique())
+    c2.metric("Usuarios/Grupos", df_clean['Identity'].nunique())
+    c3.metric("Total registros", len(df_clean))
 
-    # Gráfica Profesional de Accesos Reales
-    st.subheader("Concentración de Accesos (Usuarios Reales)")
-    top_acc = df_clean['Identity'].value_counts().head(12).reset_index()
-    top_acc.columns = ['Usuario/Grupo', 'Cantidad']
-    
-    fig = px.bar(top_acc, x='Cantidad', y='Usuario/Grupo', orientation='h',
-                 color='Cantidad', color_continuous_scale='Reds',
-                 title="Identidades con más acceso a Shares")
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Explorador de Datos
-    st.subheader("🔍 Buscador de Permisos")
-    search = st.text_input("Buscar por nombre de usuario o carpeta:")
-    
-    if search:
-        # Filtrado dinámico en todas las columnas
-        df_clean = df_clean[df_clean.apply(lambda row: row.astype(str).str.contains(search, case=False).any(), axis=1)]
-    
+    # Tabla de resultados
     st.dataframe(df_clean, use_container_width=True, hide_index=True)
     
+    # Gráfica profesional (Top 10 usuarios con más carpetas asignadas)
+    st.markdown("### Análisis de Accesos")
+    top_acc = df_clean['Identity'].value_counts().head(10).reset_index()
+    top_acc.columns = ['Usuario/Grupo', 'Conteo']
+    fig = px.bar(top_acc, x='Conteo', y='Usuario/Grupo', orientation='h', 
+                 title="Top 10 Usuarios con más asignaciones",
+                 color='Conteo', color_continuous_scale='Reds')
+    st.plotly_chart(fig, use_container_width=True)
+
 else:
-    st.info("Suba el CSV. Se están omitiendo automáticamente: SYSTEM, Administrators y otros grupos de sistema.")
+    st.info("Por favor, sube el archivo para comenzar. Los usuarios de sistema (SYSTEM, Administrators, etc.) se filtran automáticamente.")
