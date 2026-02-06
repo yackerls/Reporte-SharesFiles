@@ -84,13 +84,3 @@ Entorno: Infraestructura IT
 
 
 ---
-
-### **¿Cómo subirlo a GitHub?**
-Desde la consola de tu servidor o tu PC:
-1. Crea el archivo: `nano README.md`
-2. Pega el contenido de arriba.
-3. Guarda y sube:
-   ```bash
-   git add README.md
-   git commit -m "Add professional README with PowerShell script"
-   git push origin main
